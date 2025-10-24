@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Район</title>
+  <style>
+    .addresses-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .address-card {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 16px;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      min-height: 180px;
+      position: relative;
+    }
+
+    .address-card .card-content {
+        flex: 1 1 auto; /* подпроходит под содержимое, растягивает верх */
+    }
+
+
+
+    .address-title {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .devices-row {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(100px, 1fr);
+      gap: 8px;
+      overflow-x: auto;
+      padding-top: 8px;
+      margin-top: auto; /* пристегнуть к низу карточки */
+    }
+
+    .device-card {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 8px;
+      background: #f9f9f9;
+      min-width: 80px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    /* Подсветка совпадений */
+    .highlight {
+      background-color: #fff6a8;
+      border-radius: 4px;
+    }
+
+    .device-card:hover {
+      box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+      transform: translateY(-2px);
+    }
+
+    /* Поиск-форма */
+    .search-bar {
+      margin: 16px 0 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+    }
+
+    .match-count {
+      font-size: 14px;
+      color: #555;
+    }
+
+    .change-request-link {
+        display: inline-block; /* чтобы можно было задать размеры рамки */
+        padding: 8px 12px; /* внутр. отступы */
+        border: 2px solid #4CAF50; /* цвет рамки */
+        border-radius: 6px; /* скругление углов */
+        text-decoration: none; /* убрать подчеркивание */
+        color: #0a0a0a; /* цвет текста */
+        background-color: #e8f5e9; /* фон внутри поля (опционально) */
+    }
+    .change-request-link:hover {
+        background-color: #dcedc8;
+    }
+
+    .address-card .card-footer {
+        margin-top: auto; /* пристегнуть к низу карточки */
+    }
+  </style>
+</head>
+<body>
+  <h1>Район {{ raion }}</h1>
+
+  <div class="search-bar" aria-label="Поиск по адресам и устройствам">
+    <input id="search" class="search-input" type="text" placeholder="Поиск по id или IP" />
+    <span id="count" class="match-count" aria-live="polite"></span>
+  </div>
+
+  <div class="addresses-grid" id="addresses-grid">
+    {% for addr in raion.back_addresses.all|dictsort:"num" %}
+      <div class="address-card" data-addr-id="{{ addr.id }}" aria-label="Адрес: {{ addr.address }}">
+        <div class="address-title">id: {{ addr.num }}<br>Адрес: {{ addr.address }}</div>
+
+        <div class="devices-row" aria-label="Устройства для адреса {{ addr.address }}">
+          {% for dev in addr.back_device.all %}
+            <a href="{% url 'device_detail' dev.pk %}" class="device-card" data-ip="{{ dev.ip }}"  aria-label="Устройство {{ dev.ip }} типа {{ dev.type.type }}">
+              <strong>{{ dev.ip }}</strong><br>
+              <span>{{ dev.type.type }}</span>
+            </a>
+          {% endfor %}
+          {% if not addr.back_device.all %}
+            <div class="device-card" aria-label="Нет устройств">Нет устройств</div>
+          {% endif %}
+        </div>
+          <div class="card-footer">
+          <br><a href="{% url 'destination_page' addr.id %}"
+                class="change-request-link"
+                aria-label="Запросить изменения для адреса {{ addr.address }}">
+                Запросить изменения
+             </a>
+          </div>
+      </div>
+    {% endfor %}
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const searchInput = document.getElementById('search');
+  const grid = document.getElementById('addresses-grid');
+  const countEl = document.getElementById('count');
+
+  function clearHighlights(container) {
+    container.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+  }
+
+  function filterView() {
+    const query = searchInput.value.trim();
+    // если пустая строка — вернуть видимость всех карточек и убрать подсветку
+    if (query === '') {
+      grid.querySelectorAll('.address-card').forEach(card => {
+        card.style.display = ''; // показать все
+      });
+      clearHighlights(grid);
+      countEl.textContent = '';
+      return;
+    }
+
+    const q = query.toLowerCase();
+    let visible = 0;
+
+    grid.querySelectorAll('.address-card').forEach(card => {
+      // сначала покажем все
+      card.style.display = 'none';
+      // проверяем адрес
+      const addrEl = card.querySelector('.address-title');
+      const addrText = addrEl ? addrEl.textContent.toLowerCase() : '';
+
+      // проверяем устройства внутри карточки
+      const devices = card.querySelectorAll('.device-card');
+      let matched = false;
+
+      // подсветка внутри карточки
+      clearHighlights(card);
+
+      // совпадение по адресу
+      if (addrText.includes(q)) {
+        card.style.display = '';
+        matched = true;
+        // можно подсветить адрес, если нужно
+        addrEl && addrEl.classList.add('highlight');
+      }
+
+      // совпадение по IP / id внутри устройств
+      devices.forEach(d => {
+        const text = d.textContent.toLowerCase();
+        const ip = (d.getAttribute('data-ip') || '').toLowerCase();
+        const did = (d.getAttribute('data-id') || '').toLowerCase();
+
+        if (text.includes(q) || ip.includes(q) || did.includes(q)) {
+          d.classList.add('highlight');
+          matched = true;
+        } else {
+          d.classList.remove('highlight');
+        }
+      });
+
+      // если совпадение — карточка видна
+      if (matched) {
+        card.style.display = '';
+        visible++;
+      }
+    });
+
+    countEl.textContent = visible ? `Совпадения: ${visible}` : '';
+  }
+
+  searchInput.addEventListener('input', filterView);
+  // начальная инициализация
+  filterView();
+});
+</script>

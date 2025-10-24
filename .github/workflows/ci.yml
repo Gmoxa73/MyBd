@@ -1,0 +1,50 @@
+name: Testing and Deployment
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ${{ secrets.SECRET }}
+      DEBUG: ${{ secrets.DEBUG_MODE }}
+      ALLOWED: ${{ secrets.ALLOWED_HOSTS }}
+      DB_ENGINE: ${{ secrets.DB_ENGINE }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+
+    steps:
+      - name: Проверяем на наличие изменений
+        uses: actions/checkout@v4
+
+      - name: Установка python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Устанавливаем зависимости
+        run: pip install -r requirements.txt
+
+      - name: Линтинг
+        run: flake8 aa/ --exclude=aa/migrations
+
+      - name: Тестирование
+        run: python manage.py test
+        env:
+          POSTGRES_DB: ${{ env.DB_NAME }}
+          POSTGRES_USER: ${{ env.DB_USER }}
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+
+      - name: Деплой
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: expect MyBd/deploy.exp
+

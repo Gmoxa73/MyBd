@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Raions List with IP Search</title>
+  <style>
+.raions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.raion-card {
+  position: relative;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  min-height: 100px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.raion-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+}
+
+.raion-card:focus-visible {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+  transform: translateY(-4px);
+}
+
+.raion-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+/* Счетчик в левом верхнем углу карточки */
+.raion-count {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #4a90e2;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Заголовок района */
+.raion-title {
+  margin: 0;
+  padding-top: 28px; /* чтобы не перекрывался счетчиком */
+  font-size: 1.1rem;
+  color: #333;
+}
+  </style>
+</head>
+<body>
+HELLO-<br>
+<div class="raions-grid">
+  {% for r in raions %}
+    <a href="{% url 'raion_detail' r.id %}" class="raion-card-link" title="Перейти к району {{ r.raion }}">
+      <div class="raion-card">
+        <span class="raion-count">{{ r.back_addresses.count }} адрес(а)</span>
+        <h3 class="raion-title">{{ r.raion }}</h3>
+
+      </div>
+    </a>
+  {% endfor %}
+</div>
+
+</body>
+</html>
